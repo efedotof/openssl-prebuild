@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  OPENSSL_VERSION: "4.0.0-alpha1"
+  OPENSSL_VERSION: "4.0.0"
   ANDROID_API: 24
   NDK_URL: "https://dl.google.com/android/repository/android-ndk-r27-linux.zip"
   MACOS_MIN_INTEL: "10.15"
