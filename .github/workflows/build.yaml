@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  OPENSSL_VERSION: "4.0.0"
+  OPENSSL_VERSION: "4.0.0-alpha1"
   ANDROID_API: 24
   NDK_URL: "https://dl.google.com/android/repository/android-ndk-r27-linux.zip"
   MACOS_MIN_INTEL: "10.15"
@@ -16,7 +16,7 @@ env:
 
 jobs:
   macos-intel:
-    runs-on: macos-13
+    runs-on: macos-14
     strategy:
       matrix:
         macos_min: ["10.15", "11.0", "12.0"]
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build macOS Intel (${{ matrix.macos_min }})
         run: |
@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build macOS ARM (${{ matrix.macos_min }})
         run: |
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build iOS device (${{ matrix.ios_min }})
         run: |
@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build iOS Simulator (${{ matrix.ios_min }})
         run: |
@@ -131,7 +131,7 @@ jobs:
           sudo apt-get install -y mingw-w64
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build Windows x86_64
         run: |
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build Linux x86_64
         run: |
@@ -183,7 +183,7 @@ jobs:
           echo "${PWD}/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
       - name: Download OpenSSL
         run: |
-          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -LO "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
           tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
       - name: Build Android (${{ matrix.abi }})
         run: |
@@ -214,14 +214,14 @@ jobs:
       - name: Prepare release archive
         run: |
           mkdir -p final
- 
+
           mkdir -p final/macos-intel
           for d in macos-intel-*; do
             min_ver=${d#macos-intel-}
             mkdir -p final/macos-intel/$min_ver
             cp -r "$d"/* final/macos-intel/$min_ver/
           done
-  
+
           mkdir -p final/macos-arm
           for d in macos-arm-*; do
             min_ver=${d#macos-arm-}
@@ -242,11 +242,11 @@ jobs:
             mkdir -p final/ios-simulator/$min_ver
             cp -r "$d"/* final/ios-simulator/$min_ver/
           done
-   
+
           mv windows-x86_64 final/windows
-   
+
           mv linux-x86_64 final/linux
-  
+
           mkdir -p final/android
           for abi in arm64-v8a armeabi-v7a x86_64 x86; do
             mkdir -p final/android/$abi
