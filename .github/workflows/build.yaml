@@ -1,0 +1,262 @@
+name: Build OpenSSL for All Platforms
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  OPENSSL_VERSION: "4.0.0"
+  ANDROID_API: 24
+  NDK_URL: "https://dl.google.com/android/repository/android-ndk-r27-linux.zip"
+  MACOS_MIN_INTEL: "10.15"
+  MACOS_MIN_ARM: "11.0"
+  IOS_MIN_DEVICE: "12.0"
+  IOS_MIN_SIMULATOR: "12.0"
+
+jobs:
+  macos-intel:
+    runs-on: macos-13
+    strategy:
+      matrix:
+        macos_min: ["10.15", "11.0", "12.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build macOS Intel (${{ matrix.macos_min }})
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          export MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_min }}
+          ./Configure darwin64-x86_64-cc no-shared no-tests
+          make -j$(sysctl -n hw.logicalcpu)
+          mkdir -p ../out/macos-intel/${{ matrix.macos_min }}
+          cp libcrypto.a libssl.a ../out/macos-intel/${{ matrix.macos_min }}/
+          cp -R include ../out/macos-intel/${{ matrix.macos_min }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-intel-${{ matrix.macos_min }}
+          path: out/macos-intel/${{ matrix.macos_min }}
+
+  macos-arm:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        macos_min: ["11.0", "12.0", "13.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build macOS ARM (${{ matrix.macos_min }})
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          export MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_min }}
+          ./Configure darwin64-arm64-cc no-shared no-tests
+          make -j$(sysctl -n hw.logicalcpu)
+          mkdir -p ../out/macos-arm/${{ matrix.macos_min }}
+          cp libcrypto.a libssl.a ../out/macos-arm/${{ matrix.macos_min }}/
+          cp -R include ../out/macos-arm/${{ matrix.macos_min }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-${{ matrix.macos_min }}
+          path: out/macos-arm/${{ matrix.macos_min }}
+
+  ios-device:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        ios_min: ["12.0", "13.0", "14.0", "15.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build iOS device (${{ matrix.ios_min }})
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          export CROSS_TOP=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer
+          export CROSS_SDK=iPhoneOS.sdk
+          export SDKROOT=$CROSS_TOP/SDKs/$CROSS_SDK
+          ./Configure ios64-cross no-shared no-tests -mios-version-min=${{ matrix.ios_min }}
+          make -j$(sysctl -n hw.logicalcpu)
+          mkdir -p ../out/ios-device/${{ matrix.ios_min }}
+          cp libcrypto.a libssl.a ../out/ios-device/${{ matrix.ios_min }}/
+          cp -R include ../out/ios-device/${{ matrix.ios_min }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-device-${{ matrix.ios_min }}
+          path: out/ios-device/${{ matrix.ios_min }}
+
+  ios-simulator:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        ios_min: ["12.0", "13.0", "14.0", "15.0"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build iOS Simulator (${{ matrix.ios_min }})
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          export CROSS_TOP=/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer
+          export CROSS_SDK=iPhoneSimulator.sdk
+          export SDKROOT=$CROSS_TOP/SDKs/$CROSS_SDK
+          ./Configure iossimulator-xcrun no-shared no-tests -mios-simulator-version-min=${{ matrix.ios_min }}
+          make -j$(sysctl -n hw.logicalcpu)
+          mkdir -p ../out/ios-simulator/${{ matrix.ios_min }}
+          cp libcrypto.a libssl.a ../out/ios-simulator/${{ matrix.ios_min }}/
+          cp -R include ../out/ios-simulator/${{ matrix.ios_min }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator-${{ matrix.ios_min }}
+          path: out/ios-simulator/${{ matrix.ios_min }}
+
+  windows:
+    runs-on: ubuntu-22.04
+    env:
+      CROSS_COMPILE: x86_64-w64-mingw32-
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MinGW-w64 cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build Windows x86_64
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          ./Configure mingw64 no-shared no-tests --cross-compile-prefix=${CROSS_COMPILE}
+          make -j$(nproc)
+          mkdir -p ../out/windows/x86_64
+          cp libcrypto.a libssl.a ../out/windows/x86_64/
+          cp -R include ../out/windows/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x86_64
+          path: out/windows
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build Linux x86_64
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          ./Configure linux-x86_64 no-shared no-tests
+          make -j$(nproc)
+          mkdir -p ../out/linux/x86_64
+          cp libcrypto.a libssl.a ../out/linux/x86_64/
+          cp -R include ../out/linux/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x86_64
+          path: out/linux
+
+  android:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        abi: [arm64-v8a, armeabi-v7a, x86_64, x86]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Android NDK
+        run: |
+          curl -L -o ndk.zip "${NDK_URL}"
+          unzip -q ndk.zip
+          mv android-ndk-* ndk
+          echo "ANDROID_NDK_ROOT=${PWD}/ndk" >> $GITHUB_ENV
+          echo "${PWD}/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+      - name: Download OpenSSL
+        run: |
+          curl -LO "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+          tar xzf "openssl-${OPENSSL_VERSION}.tar.gz"
+      - name: Build Android (${{ matrix.abi }})
+        run: |
+          cd "openssl-${OPENSSL_VERSION}"
+          case "${{ matrix.abi }}" in
+            "arm64-v8a")   TARGET=android-arm64 ;;
+            "armeabi-v7a") TARGET=android-arm ;;
+            "x86_64")      TARGET=android-x86_64 ;;
+            "x86")         TARGET=android-x86 ;;
+          esac
+          export CFLAGS="-D__ANDROID_API__=$ANDROID_API"
+          ./Configure $TARGET shared no-tests
+          make -j$(nproc)
+          mkdir -p ../out/android/${{ matrix.abi }}
+          cp libcrypto.so libssl.so ../out/android/${{ matrix.abi }}/
+          cp -R include ../out/android/${{ matrix.abi }}/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.abi }}
+          path: out/android/${{ matrix.abi }}
+
+  release:
+    needs: [macos-intel, macos-arm, ios-device, ios-simulator, windows, linux, android]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Prepare release archive
+        run: |
+          mkdir -p final
+ 
+          mkdir -p final/macos-intel
+          for d in macos-intel-*; do
+            min_ver=${d#macos-intel-}
+            mkdir -p final/macos-intel/$min_ver
+            cp -r "$d"/* final/macos-intel/$min_ver/
+          done
+  
+          mkdir -p final/macos-arm
+          for d in macos-arm-*; do
+            min_ver=${d#macos-arm-}
+            mkdir -p final/macos-arm/$min_ver
+            cp -r "$d"/* final/macos-arm/$min_ver/
+          done
+
+          mkdir -p final/ios-device
+          for d in ios-device-*; do
+            min_ver=${d#ios-device-}
+            mkdir -p final/ios-device/$min_ver
+            cp -r "$d"/* final/ios-device/$min_ver/
+          done
+
+          mkdir -p final/ios-simulator
+          for d in ios-simulator-*; do
+            min_ver=${d#ios-simulator-}
+            mkdir -p final/ios-simulator/$min_ver
+            cp -r "$d"/* final/ios-simulator/$min_ver/
+          done
+   
+          mv windows-x86_64 final/windows
+   
+          mv linux-x86_64 final/linux
+  
+          mkdir -p final/android
+          for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            mkdir -p final/android/$abi
+            cp -r android-$abi/* final/android/$abi/
+          done
+          tar -czf openssl-${{ github.ref_name }}.tar.gz final/
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: openssl-${{ github.ref_name }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
